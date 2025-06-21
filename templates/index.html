@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>統計的仮説検定</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+
+  <h1 class="mb-4">CSVアップロードと統計的仮説検定</h1>
+
+  <!-- ステップ1: アップロード -->
+  <form method="POST" enctype="multipart/form-data" action="/">
+    <div class="mb-3">
+      <label for="file" class="form-label">CSVファイル:</label>
+      <input type="file" name="file" class="form-control">
+    </div>
+    <button type="submit" class="btn btn-secondary">アップロード</button>
+  </form>
+
+  {% if columns %}
+  <hr>
+
+  <!-- ステップ2: 検定実行 -->
+  <form method="POST" action="/test">
+    <input type="hidden" name="df_path" value="{{ df_path }}">
+
+    <div class="mb-3">
+      <label class="form-label">検定方法:</label>
+      <select name="test_type" id="test_type" class="form-select" onchange="updateDescription()">
+        {% for key, value in test_descriptions.items() %}
+          <option value="{{ key }}" {% if key == selected_test %}selected{% endif %}>{{ value.split('。')[0] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">対象列1:</label>
+      <select name="col1" class="form-select">
+        {% for col in columns %}
+          <option value="{{ col }}" {% if col == selected_col1 %}selected{% endif %}>{{ col }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">対象列2:</label>
+      <select name="col2" class="form-select">
+        <option value="">（なし）</option>
+        {% for col in columns %}
+          <option value="{{ col }}" {% if col == selected_col2 %}selected{% endif %}>{{ col }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">検定を実行</button>
+  </form>
+
+  <div class="mt-4">
+    <h4>検定の概要:</h4>
+    <p id="description">{{ description if description else '検定方法を選択すると説明が表示されます。' }}</p>
+  </div>
+
+  {% if formatted %}
+  <div class="alert alert-info mt-4">
+    <h5>検定結果:</h5>
+    <table class="table table-bordered">
+      <tr><th>検定名</th><td>{{ formatted.method }}</td></tr>
+      <tr><th>統計量</th><td>{{ formatted.statistic }}</td></tr>
+      <tr><th>p値</th><td>{{ formatted.pvalue }}</td></tr>
+      <tr><th>判定</th><td>{{ formatted.summary }}</td></tr>
+    </table>
+  </div>
+  {% elif result %}
+  <div class="alert alert-warning mt-4">
+    <strong>エラー:</strong>
+    <pre>{{ result }}</pre>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <script>
+    const descriptions = {{ test_descriptions | tojson }};
+    function updateDescription() {
+      const selected = document.getElementById("test_type").value;
+      document.getElementById("description").innerText = descriptions[selected] || "";
+    }
+  </script>
+</body>
+</html>
