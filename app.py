@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 import pandas as pd
 from utils.tests import run_test, TEST_DESCRIPTIONS
+from utils.regression import run_regression
 from collections import namedtuple
 import os
 import tempfile
@@ -34,16 +35,19 @@ def upload():
             df = pd.read_csv(filepath)
             columns = df.columns.tolist()
             return render_template('index.html',
+                                   mode='none',
                                    columns=columns,
                                    df_path=filepath,
                                    test_descriptions=TEST_DESCRIPTIONS,
-                                   selected_test="",
-                                   selected_col1="",
-                                   selected_col2="",
-                                   result=None,
-                                   formatted=None,
-                                   description="")
-    return render_template('index.html', columns=[], df_path=None, test_descriptions=TEST_DESCRIPTIONS)
+                                   regression_result=None,
+                                   regression_models=['linear', 'lasso', 'logistic', 'svm'])
+    return render_template('index.html',
+                           mode='none',
+                           columns=[],
+                           df_path=None,
+                           test_descriptions=TEST_DESCRIPTIONS,
+                           regression_result=None,
+                           regression_models=[])
 
 @app.route('/test', methods=['POST'])
 def test():
@@ -63,6 +67,7 @@ def test():
     test_description = TEST_DESCRIPTIONS.get(selected_test, "")
 
     return render_template('index.html',
+                           mode='test',
                            columns=columns,
                            df_path=df_path,
                            test_descriptions=TEST_DESCRIPTIONS,
@@ -71,7 +76,32 @@ def test():
                            selected_col2=selected_col2,
                            result=result,
                            formatted=formatted,
-                           description=test_description)
+                           description=test_description,
+                           regression_result=None,
+                           regression_models=['linear', 'lasso', 'logistic', 'svm'])
+
+@app.route('/regression', methods=['POST'])
+def regression():
+    df_path = request.form.get('df_path')
+    if not df_path or not os.path.exists(df_path):
+        return redirect(url_for('upload'))
+
+    df = pd.read_csv(df_path)
+    columns = df.columns.tolist()
+
+    model_type = request.form['model_type']
+    target_col = request.form['target']
+    features = request.form.getlist('features')
+
+    result = run_regression(df, model_type, target_col, features)
+
+    return render_template('index.html',
+                           mode='regression',
+                           columns=columns,
+                           df_path=df_path,
+                           test_descriptions=TEST_DESCRIPTIONS,
+                           regression_result=result,
+                           regression_models=['linear', 'lasso', 'logistic', 'svm'])
 
 if __name__ == '__main__':
     app.run(debug=True, port=8080)
